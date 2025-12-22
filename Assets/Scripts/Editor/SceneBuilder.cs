@@ -1,13 +1,14 @@
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using WhatTheStrike.Components;
+using WhatTheStrike.Core;
 
 namespace WhatTheStrike.Editor
 {
     /// <summary>
-    /// ゲームシーンを自動構築するエディタスクリプト
+    /// ゲームシーンを自動構築するエディタスクリプト（コンポーネント指向版）
     /// </summary>
     public class SceneBuilder : EditorWindow
     {
@@ -21,26 +22,25 @@ namespace WhatTheStrike.Editor
             // カメラ設定
             SetupCamera();
 
-            // マネージャー生成
-            CreateManagers();
+            // Core生成
+            CreateCore();
 
             // ステージ生成
             CreateStage();
 
-            // プレイヤー4体生成
-            var players = CreatePlayers();
+            // Shootables（プレイヤー）生成
+            CreateShootables();
 
-            // 敵を生成
+            // 敵生成
             CreateEnemies();
 
             // UI生成
-            CreateUI(players);
+            CreateUI();
 
             // シーン保存ダイアログ
             if (EditorUtility.DisplayDialog("Scene Created",
                 "ゲームシーンが作成されました。保存しますか？", "保存", "後で"))
             {
-                // Scenesフォルダがなければ作成
                 if (!AssetDatabase.IsValidFolder("Assets/Scenes"))
                 {
                     AssetDatabase.CreateFolder("Assets", "Scenes");
@@ -49,12 +49,9 @@ namespace WhatTheStrike.Editor
                 AssetDatabase.Refresh();
             }
 
-            Debug.Log("WhatTheStrike: ゲームシーンの構築が完了しました！");
+            Debug.Log("WhatTheStrike: コンポーネント指向版ゲームシーンの構築が完了しました！");
         }
 
-        /// <summary>
-        /// カメラ設定
-        /// </summary>
         private static void SetupCamera()
         {
             var camera = Camera.main;
@@ -67,146 +64,19 @@ namespace WhatTheStrike.Editor
             }
         }
 
-        /// <summary>
-        /// マネージャーを生成
-        /// </summary>
-        private static void CreateManagers()
+        private static void CreateCore()
         {
             // GameManager
             var gameManagerObj = new GameObject("GameManager");
-            gameManagerObj.AddComponent<Core.GameManager>();
+            gameManagerObj.AddComponent<GameManager>();
 
-            // PhysicsManager
-            var physicsManagerObj = new GameObject("PhysicsManager");
-            physicsManagerObj.AddComponent<Core.PhysicsManager>();
-
-            // FriendshipComboManager
-            var comboManagerObj = new GameObject("FriendshipComboManager");
-            comboManagerObj.AddComponent<FriendshipCombo.FriendshipComboManager>();
-        }
-
-        /// <summary>
-        /// ステージを生成
-        /// </summary>
-        private static void CreateStage()
-        {
-            var stageObj = new GameObject("Stage");
-            var stage = stageObj.AddComponent<Stage.Stage>();
-
-            // 壁を生成
-            CreateWalls(stageObj.transform);
-        }
-
-        /// <summary>
-        /// 壁を生成
-        /// </summary>
-        private static void CreateWalls(Transform parent)
-        {
-            float width = 18f;
-            float height = 10f;
-            float wallThickness = 0.5f;
-
-            // 物理マテリアル（反射用）
-            var bouncyMaterial = new PhysicsMaterial2D("Bouncy");
-            bouncyMaterial.bounciness = 0.8f;
-            bouncyMaterial.friction = 0f;
-
-            // 上壁
-            CreateWall("TopWall", new Vector3(0, height / 2 + wallThickness / 2, 0),
-                new Vector2(width + wallThickness * 2, wallThickness), parent, bouncyMaterial);
-
-            // 下壁
-            CreateWall("BottomWall", new Vector3(0, -height / 2 - wallThickness / 2, 0),
-                new Vector2(width + wallThickness * 2, wallThickness), parent, bouncyMaterial);
-
-            // 左壁
-            CreateWall("LeftWall", new Vector3(-width / 2 - wallThickness / 2, 0, 0),
-                new Vector2(wallThickness, height), parent, bouncyMaterial);
-
-            // 右壁
-            CreateWall("RightWall", new Vector3(width / 2 + wallThickness / 2, 0, 0),
-                new Vector2(wallThickness, height), parent, bouncyMaterial);
-        }
-
-        private static void CreateWall(string name, Vector3 position, Vector2 size, Transform parent, PhysicsMaterial2D material)
-        {
-            var wallObj = new GameObject(name);
-            wallObj.transform.SetParent(parent);
-            wallObj.transform.localPosition = position;
-            wallObj.layer = LayerMask.NameToLayer("Default");
-
-            var collider = wallObj.AddComponent<BoxCollider2D>();
-            collider.size = size;
-            collider.sharedMaterial = material;
-
-            var sr = wallObj.AddComponent<SpriteRenderer>();
-            sr.sprite = CreateRectSprite((int)size.x * 10, (int)size.y * 10);
-            sr.color = new Color(0.4f, 0.4f, 0.5f);
-            wallObj.transform.localScale = new Vector3(size.x, size.y, 1);
-        }
-
-        /// <summary>
-        /// プレイヤー4体を生成
-        /// </summary>
-        private static Player.Player[] CreatePlayers()
-        {
-            var playersParent = new GameObject("Players");
-            var players = new Player.Player[4];
-
-            Vector3[] positions = new Vector3[]
-            {
-                new Vector3(0, -3, 0),
-                new Vector3(-2.5f, -3.5f, 0),
-                new Vector3(2.5f, -3.5f, 0),
-                new Vector3(0, -4, 0)
-            };
-
-            Color[] colors = new Color[]
-            {
-                new Color(1f, 0.3f, 0.3f),   // 赤
-                new Color(0.3f, 0.5f, 1f),   // 青
-                new Color(0.3f, 1f, 0.3f),   // 緑
-                new Color(1f, 1f, 0.3f)      // 黄
-            };
-
-            FriendshipCombo.FriendshipComboType[] comboTypes = new FriendshipCombo.FriendshipComboType[]
-            {
-                FriendshipCombo.FriendshipComboType.Laser,
-                FriendshipCombo.FriendshipComboType.EnergyCircle,
-                FriendshipCombo.FriendshipComboType.SpeedUp,
-                FriendshipCombo.FriendshipComboType.Explosion
-            };
-
-            for (int i = 0; i < 4; i++)
-            {
-                var playerObj = CreateCapsuleObject($"Player_{i + 1}", positions[i], colors[i], 0.8f);
-                playerObj.transform.SetParent(playersParent.transform);
-
-                var player = playerObj.AddComponent<Player.Player>();
-                players[i] = player;
-
-                // Rigidbody2D
-                var rb = playerObj.AddComponent<Rigidbody2D>();
-                rb.gravityScale = 0;
-                rb.linearDamping = 2f;
-                rb.angularDamping = 1f;
-                rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-
-                // 物理マテリアル
-                var material = new PhysicsMaterial2D($"Player_{i + 1}_Material");
-                material.bounciness = 0.7f;
-                material.friction = 0.1f;
-                playerObj.GetComponent<CircleCollider2D>().sharedMaterial = material;
-            }
-
-            // PlayerController
-            var controllerObj = new GameObject("PlayerController");
-            controllerObj.transform.SetParent(playersParent.transform);
-            var controller = controllerObj.AddComponent<Player.PlayerController>();
+            // TurnController
+            var turnControllerObj = new GameObject("TurnController");
+            var turnController = turnControllerObj.AddComponent<TurnController>();
 
             // 軌道表示用LineRenderer
             var trajectoryObj = new GameObject("TrajectoryLine");
-            trajectoryObj.transform.SetParent(controllerObj.transform);
+            trajectoryObj.transform.SetParent(turnControllerObj.transform);
             var lineRenderer = trajectoryObj.AddComponent<LineRenderer>();
             lineRenderer.startWidth = 0.1f;
             lineRenderer.endWidth = 0.05f;
@@ -215,29 +85,134 @@ namespace WhatTheStrike.Editor
             lineRenderer.endColor = new Color(1, 1, 1, 0.3f);
             lineRenderer.enabled = false;
 
-            // Controllerにプレイヤーをセット（SerializedObjectで設定）
-            SerializedObject so = new SerializedObject(controller);
-            SerializedProperty playersProperty = so.FindProperty("players");
-            playersProperty.arraySize = 4;
-            for (int i = 0; i < 4; i++)
-            {
-                playersProperty.GetArrayElementAtIndex(i).objectReferenceValue = players[i];
-            }
+            SerializedObject so = new SerializedObject(turnController);
             so.FindProperty("trajectoryLine").objectReferenceValue = lineRenderer;
             so.ApplyModifiedProperties();
-
-            return players;
         }
 
-        /// <summary>
-        /// 敵を生成
-        /// </summary>
+        private static void CreateStage()
+        {
+            var stageObj = new GameObject("Stage");
+
+            float width = 18f;
+            float height = 10f;
+            float wallThickness = 0.5f;
+
+            var bouncyMaterial = new PhysicsMaterial2D("Bouncy")
+            {
+                bounciness = 0.8f,
+                friction = 0f
+            };
+
+            CreateWall("TopWall", new Vector3(0, height / 2 + wallThickness / 2, 0),
+                new Vector2(width + wallThickness * 2, wallThickness), stageObj.transform, bouncyMaterial);
+            CreateWall("BottomWall", new Vector3(0, -height / 2 - wallThickness / 2, 0),
+                new Vector2(width + wallThickness * 2, wallThickness), stageObj.transform, bouncyMaterial);
+            CreateWall("LeftWall", new Vector3(-width / 2 - wallThickness / 2, 0, 0),
+                new Vector2(wallThickness, height), stageObj.transform, bouncyMaterial);
+            CreateWall("RightWall", new Vector3(width / 2 + wallThickness / 2, 0, 0),
+                new Vector2(wallThickness, height), stageObj.transform, bouncyMaterial);
+
+            // フロア（背景）
+            var floorObj = new GameObject("Floor");
+            floorObj.transform.SetParent(stageObj.transform);
+            var floorSr = floorObj.AddComponent<SpriteRenderer>();
+            floorSr.sprite = CreateRectSprite(180, 100);
+            floorSr.color = new Color(0.15f, 0.15f, 0.2f);
+            floorSr.sortingOrder = -10;
+            floorObj.transform.localScale = new Vector3(width, height, 1);
+        }
+
+        private static void CreateWall(string name, Vector3 position, Vector2 size, Transform parent, PhysicsMaterial2D material)
+        {
+            var wallObj = new GameObject(name);
+            wallObj.transform.SetParent(parent);
+            wallObj.transform.localPosition = position;
+
+            var collider = wallObj.AddComponent<BoxCollider2D>();
+            collider.size = size;
+            collider.sharedMaterial = material;
+
+            var sr = wallObj.AddComponent<SpriteRenderer>();
+            sr.sprite = CreateRectSprite((int)(size.x * 10), (int)(size.y * 10));
+            sr.color = new Color(0.4f, 0.4f, 0.5f);
+            wallObj.transform.localScale = new Vector3(size.x, size.y, 1);
+        }
+
+        private static void CreateShootables()
+        {
+            var shootablesParent = new GameObject("Shootables");
+
+            Vector3[] positions =
+            {
+                new Vector3(0, -3, 0),
+                new Vector3(-2.5f, -3.5f, 0),
+                new Vector3(2.5f, -3.5f, 0),
+                new Vector3(0, -4, 0)
+            };
+
+            Color[] colors =
+            {
+                new Color(1f, 0.3f, 0.3f),   // 赤
+                new Color(0.3f, 0.5f, 1f),   // 青
+                new Color(0.3f, 1f, 0.3f),   // 緑
+                new Color(1f, 1f, 0.3f)      // 黄
+            };
+
+            string[] names = { "Red", "Blue", "Green", "Yellow" };
+
+            FriendshipComboType[] comboTypes =
+            {
+                FriendshipComboType.Laser,
+                FriendshipComboType.EnergyCircle,
+                FriendshipComboType.SpeedUp,
+                FriendshipComboType.Explosion
+            };
+
+            for (int i = 0; i < 4; i++)
+            {
+                var obj = CreateCircleObject($"Player_{names[i]}", positions[i], colors[i], 0.8f);
+                obj.transform.SetParent(shootablesParent.transform);
+
+                // Shootable
+                var shootable = obj.AddComponent<Shootable>();
+                SerializedObject shootableSo = new SerializedObject(shootable);
+                shootableSo.FindProperty("speed").floatValue = 1.0f;
+                shootableSo.FindProperty("attack").intValue = 10;
+                shootableSo.FindProperty("friendshipComboType").enumValueIndex = (int)comboTypes[i];
+                shootableSo.FindProperty("friendshipComboDamage").intValue = 10;
+                shootableSo.FindProperty("friendshipComboRange").floatValue = 3f;
+                shootableSo.ApplyModifiedProperties();
+
+                // Damageable（プレイヤーもダメージを受ける）
+                var damageable = obj.AddComponent<Damageable>();
+                SerializedObject damageableSo = new SerializedObject(damageable);
+                damageableSo.FindProperty("maxHp").intValue = 100;
+                damageableSo.FindProperty("defense").intValue = 0;
+                damageableSo.FindProperty("isTargetForClear").boolValue = false;
+                damageableSo.ApplyModifiedProperties();
+
+                // Rigidbody2D
+                var rb = obj.GetComponent<Rigidbody2D>();
+                rb.linearDamping = 2f;
+                rb.angularDamping = 1f;
+                rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+
+                // 物理マテリアル
+                var material = new PhysicsMaterial2D($"Player_{i}_Material")
+                {
+                    bounciness = 0.7f,
+                    friction = 0.1f
+                };
+                obj.GetComponent<CircleCollider2D>().sharedMaterial = material;
+            }
+        }
+
         private static void CreateEnemies()
         {
             var enemiesParent = new GameObject("Enemies");
 
-            // サンプル敵を配置
-            Vector3[] positions = new Vector3[]
+            Vector3[] positions =
             {
                 new Vector3(0, 2, 0),
                 new Vector3(-3, 3, 0),
@@ -248,76 +223,49 @@ namespace WhatTheStrike.Editor
 
             for (int i = 0; i < positions.Length; i++)
             {
-                var enemyObj = CreateCapsuleObject($"Enemy_{i + 1}", positions[i], new Color(0.8f, 0.2f, 0.8f), 1f);
-                enemyObj.transform.SetParent(enemiesParent.transform);
+                var obj = CreateCircleObject($"Enemy_{i + 1}", positions[i], new Color(0.8f, 0.2f, 0.8f), 1f);
+                obj.transform.SetParent(enemiesParent.transform);
 
-                var enemy = enemyObj.AddComponent<Enemy.Enemy>();
+                // Damageable（クリア対象）
+                var damageable = obj.AddComponent<Damageable>();
+                SerializedObject so = new SerializedObject(damageable);
+                so.FindProperty("maxHp").intValue = 50;
+                so.FindProperty("defense").intValue = 0;
+                so.FindProperty("isTargetForClear").boolValue = true;
+                so.ApplyModifiedProperties();
 
                 // Rigidbody2D（静的）
-                var rb = enemyObj.AddComponent<Rigidbody2D>();
+                var rb = obj.GetComponent<Rigidbody2D>();
                 rb.bodyType = RigidbodyType2D.Kinematic;
             }
         }
 
-        /// <summary>
-        /// カプセル型オブジェクトを生成
-        /// </summary>
-        private static GameObject CreateCapsuleObject(string name, Vector3 position, Color color, float scale)
+        private static GameObject CreateCircleObject(string name, Vector3 position, Color color, float scale)
         {
             var obj = new GameObject(name);
             obj.transform.position = position;
             obj.transform.localScale = Vector3.one * scale;
 
-            // SpriteRenderer（カプセル風の円）
             var sr = obj.AddComponent<SpriteRenderer>();
             sr.sprite = CreateCircleSprite(64);
             sr.color = color;
 
-            // CircleCollider2D
             var collider = obj.AddComponent<CircleCollider2D>();
             collider.radius = 0.5f;
+
+            var rb = obj.AddComponent<Rigidbody2D>();
+            rb.gravityScale = 0;
 
             return obj;
         }
 
-        /// <summary>
-        /// UIを生成
-        /// </summary>
-        private static void CreateUI(Player.Player[] players)
+        private static void CreateUI()
         {
-            // Canvas
             var canvasObj = new GameObject("Canvas");
             var canvas = canvasObj.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvasObj.AddComponent<CanvasScaler>();
             canvasObj.AddComponent<GraphicRaycaster>();
-
-            // HP表示パネル
-            var hpPanelObj = new GameObject("HPPanel");
-            hpPanelObj.transform.SetParent(canvasObj.transform, false);
-            var hpPanelRect = hpPanelObj.AddComponent<RectTransform>();
-            hpPanelRect.anchorMin = new Vector2(0, 1);
-            hpPanelRect.anchorMax = new Vector2(0, 1);
-            hpPanelRect.pivot = new Vector2(0, 1);
-            hpPanelRect.anchoredPosition = new Vector2(20, -20);
-            hpPanelRect.sizeDelta = new Vector2(300, 150);
-
-            var panelImage = hpPanelObj.AddComponent<Image>();
-            panelImage.color = new Color(0, 0, 0, 0.5f);
-
-            // 各プレイヤーのHP表示
-            Color[] playerColors = new Color[]
-            {
-                new Color(1f, 0.3f, 0.3f),
-                new Color(0.3f, 0.5f, 1f),
-                new Color(0.3f, 1f, 0.3f),
-                new Color(1f, 1f, 0.3f)
-            };
-
-            for (int i = 0; i < 4; i++)
-            {
-                CreatePlayerHPBar(hpPanelObj.transform, i, playerColors[i]);
-            }
 
             // ターン表示
             CreateTurnDisplay(canvasObj.transform);
@@ -326,65 +274,6 @@ namespace WhatTheStrike.Editor
             CreateGameStateDisplay(canvasObj.transform);
         }
 
-        /// <summary>
-        /// プレイヤーHPバーを生成
-        /// </summary>
-        private static void CreatePlayerHPBar(Transform parent, int index, Color color)
-        {
-            var hpBarObj = new GameObject($"Player{index + 1}_HP");
-            hpBarObj.transform.SetParent(parent, false);
-
-            var rect = hpBarObj.AddComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0, 1);
-            rect.anchorMax = new Vector2(1, 1);
-            rect.pivot = new Vector2(0.5f, 1);
-            rect.anchoredPosition = new Vector2(0, -10 - index * 35);
-            rect.sizeDelta = new Vector2(-20, 30);
-
-            // ラベル
-            var labelObj = new GameObject("Label");
-            labelObj.transform.SetParent(hpBarObj.transform, false);
-            var labelRect = labelObj.AddComponent<RectTransform>();
-            labelRect.anchorMin = new Vector2(0, 0);
-            labelRect.anchorMax = new Vector2(0.2f, 1);
-            labelRect.offsetMin = Vector2.zero;
-            labelRect.offsetMax = Vector2.zero;
-
-            var labelText = labelObj.AddComponent<Text>();
-            labelText.text = $"P{index + 1}";
-            labelText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            labelText.fontSize = 16;
-            labelText.color = color;
-            labelText.alignment = TextAnchor.MiddleCenter;
-
-            // HPバー背景
-            var bgObj = new GameObject("Background");
-            bgObj.transform.SetParent(hpBarObj.transform, false);
-            var bgRect = bgObj.AddComponent<RectTransform>();
-            bgRect.anchorMin = new Vector2(0.22f, 0.2f);
-            bgRect.anchorMax = new Vector2(1, 0.8f);
-            bgRect.offsetMin = Vector2.zero;
-            bgRect.offsetMax = Vector2.zero;
-
-            var bgImage = bgObj.AddComponent<Image>();
-            bgImage.color = new Color(0.2f, 0.2f, 0.2f);
-
-            // HPバー
-            var fillObj = new GameObject("Fill");
-            fillObj.transform.SetParent(bgObj.transform, false);
-            var fillRect = fillObj.AddComponent<RectTransform>();
-            fillRect.anchorMin = Vector2.zero;
-            fillRect.anchorMax = Vector2.one;
-            fillRect.offsetMin = new Vector2(2, 2);
-            fillRect.offsetMax = new Vector2(-2, -2);
-
-            var fillImage = fillObj.AddComponent<Image>();
-            fillImage.color = color;
-        }
-
-        /// <summary>
-        /// ターン表示を生成
-        /// </summary>
         private static void CreateTurnDisplay(Transform parent)
         {
             var turnObj = new GameObject("TurnDisplay");
@@ -414,11 +303,14 @@ namespace WhatTheStrike.Editor
             text.fontSize = 24;
             text.color = Color.white;
             text.alignment = TextAnchor.MiddleCenter;
+
+            // UIUpdater
+            var uiUpdater = turnObj.AddComponent<UIUpdater>();
+            SerializedObject so = new SerializedObject(uiUpdater);
+            so.FindProperty("turnText").objectReferenceValue = text;
+            so.ApplyModifiedProperties();
         }
 
-        /// <summary>
-        /// ゲーム状態表示を生成
-        /// </summary>
         private static void CreateGameStateDisplay(Transform parent)
         {
             var stateObj = new GameObject("GameStateDisplay");
@@ -449,13 +341,9 @@ namespace WhatTheStrike.Editor
             text.color = Color.yellow;
             text.alignment = TextAnchor.MiddleCenter;
 
-            // 初期は非表示
             stateObj.SetActive(false);
         }
 
-        /// <summary>
-        /// 円形スプライトを生成
-        /// </summary>
         private static Sprite CreateCircleSprite(int size)
         {
             var texture = new Texture2D(size, size);
@@ -469,7 +357,6 @@ namespace WhatTheStrike.Editor
                     float dist = Vector2.Distance(new Vector2(x, y), center);
                     if (dist < radius)
                     {
-                        // グラデーションで立体感を出す
                         float brightness = 1f - (dist / radius) * 0.3f;
                         texture.SetPixel(x, y, new Color(brightness, brightness, brightness, 1f));
                     }
@@ -486,9 +373,6 @@ namespace WhatTheStrike.Editor
             return Sprite.Create(texture, new Rect(0, 0, size, size), Vector2.one * 0.5f, size);
         }
 
-        /// <summary>
-        /// 矩形スプライトを生成
-        /// </summary>
         private static Sprite CreateRectSprite(int width, int height)
         {
             var texture = new Texture2D(width, height);

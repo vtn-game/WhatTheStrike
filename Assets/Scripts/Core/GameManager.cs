@@ -1,5 +1,8 @@
 using UnityEngine;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using WhatTheStrike.Components;
 
 namespace WhatTheStrike.Core
 {
@@ -21,54 +24,62 @@ namespace WhatTheStrike.Core
     /// </summary>
     public class GameManager : MonoBehaviour
     {
-        // シングルトン
-        private static GameManager instance;
-        public static GameManager Instance => instance;
+        [Header("設定")]
+        [SerializeField] private int maxTurns = 30;
+        [SerializeField] private float stageIntroDelay = 2f;
 
-        [Header("参照")]
-        [SerializeField] private Stage.Stage currentStage;
-        [SerializeField] private Player.PlayerController playerController;
+        // シングルトン
+        private static GameManager? _instance;
+        public static GameManager Instance => _instance!;
 
         // 状態
-        private GameState gameState = GameState.Title;
-        private int turnCount = 0;
+        private GameState _state = GameState.Title;
+        private int _turnCount = 0;
+        private List<Damageable> _clearTargets = new();
 
         // イベント
-        public event Action<GameState> OnGameStateChanged;
-        public event Action<int> OnTurnChanged;
+        public event Action<GameState>? OnStateChanged;
+        public event Action<int>? OnTurnChanged;
+        public event Action? OnStageClear;
+        public event Action? OnGameOver;
 
         // プロパティ
-        public GameState CurrentState => gameState;
-        public int TurnCount => turnCount;
+        public GameState State => _state;
+        public int TurnCount => _turnCount;
+        public int MaxTurns => maxTurns;
 
         private void Awake()
         {
-            if (instance == null)
+            if (_instance == null)
             {
-                instance = this;
-                DontDestroyOnLoad(gameObject);
+                _instance = this;
             }
             else
             {
                 Destroy(gameObject);
+                return;
             }
         }
 
         private void Start()
         {
-            Initialize();
+            RegisterClearTargets();
         }
 
         /// <summary>
-        /// 初期化
+        /// クリア対象のDamageableを登録
         /// </summary>
-        private void Initialize()
+        private void RegisterClearTargets()
         {
-            // ステージイベント登録
-            if (currentStage != null)
+            _clearTargets.Clear();
+            var allDamageables = FindObjectsByType<Damageable>(FindObjectsSortMode.None);
+            foreach (var damageable in allDamageables)
             {
-                currentStage.OnStageClear += OnStageClear;
-                currentStage.OnStageFailure += OnStageFailure;
+                if (damageable.IsTargetForClear)
+                {
+                    _clearTargets.Add(damageable);
+                    damageable.OnDeath += OnClearTargetDeath;
+                }
             }
         }
 
@@ -77,10 +88,8 @@ namespace WhatTheStrike.Core
         /// </summary>
         public void StartGame()
         {
-            SetGameState(GameState.StageIntro);
-
-            // ステージイントロ後にプレイ開始
-            Invoke(nameof(StartPlaying), 2f);
+            SetState(GameState.StageIntro);
+            Invoke(nameof(StartPlaying), stageIntroDelay);
         }
 
         /// <summary>
@@ -88,9 +97,9 @@ namespace WhatTheStrike.Core
         /// </summary>
         private void StartPlaying()
         {
-            SetGameState(GameState.Playing);
-            turnCount = 1;
-            OnTurnChanged?.Invoke(turnCount);
+            SetState(GameState.Playing);
+            _turnCount = 1;
+            OnTurnChanged?.Invoke(_turnCount);
         }
 
         /// <summary>
@@ -98,13 +107,71 @@ namespace WhatTheStrike.Core
         /// </summary>
         public void EndTurn()
         {
-            if (gameState != GameState.Playing) return;
+            if (_state != GameState.Playing) return;
 
-            turnCount++;
-            OnTurnChanged?.Invoke(turnCount);
+            _turnCount++;
+            OnTurnChanged?.Invoke(_turnCount);
+
+            // ターン上限チェック
+            if (_turnCount > maxTurns)
+            {
+                TriggerGameOver();
+                return;
+            }
 
             // クリア条件チェック
-            currentStage?.CheckClearCondition();
+            CheckClearCondition();
+        }
+
+        /// <summary>
+        /// クリア対象死亡時
+        /// </summary>
+        private void OnClearTargetDeath(Damageable damageable)
+        {
+            _clearTargets.Remove(damageable);
+            CheckClearCondition();
+        }
+
+        /// <summary>
+        /// クリア条件チェック
+        /// </summary>
+        private void CheckClearCondition()
+        {
+            if (_clearTargets.Count == 0 || _clearTargets.All(t => !t.IsAlive))
+            {
+                TriggerStageClear();
+            }
+        }
+
+        /// <summary>
+        /// Shootable全滅チェック（TurnControllerから呼び出される）
+        /// </summary>
+        public void CheckShootablesAlive(IReadOnlyList<Shootable> shootables)
+        {
+            if (shootables.All(s => !s.IsAlive))
+            {
+                TriggerGameOver();
+            }
+        }
+
+        /// <summary>
+        /// ステージクリア
+        /// </summary>
+        private void TriggerStageClear()
+        {
+            SetState(GameState.StageClear);
+            OnStageClear?.Invoke();
+            Debug.Log($"Stage Clear! Turns: {_turnCount}");
+        }
+
+        /// <summary>
+        /// ゲームオーバー
+        /// </summary>
+        private void TriggerGameOver()
+        {
+            SetState(GameState.GameOver);
+            OnGameOver?.Invoke();
+            Debug.Log("Game Over!");
         }
 
         /// <summary>
@@ -112,9 +179,8 @@ namespace WhatTheStrike.Core
         /// </summary>
         public void Pause()
         {
-            if (gameState != GameState.Playing) return;
-
-            SetGameState(GameState.Paused);
+            if (_state != GameState.Playing) return;
+            SetState(GameState.Paused);
             Time.timeScale = 0f;
         }
 
@@ -123,28 +189,9 @@ namespace WhatTheStrike.Core
         /// </summary>
         public void Resume()
         {
-            if (gameState != GameState.Paused) return;
-
-            SetGameState(GameState.Playing);
+            if (_state != GameState.Paused) return;
+            SetState(GameState.Playing);
             Time.timeScale = 1f;
-        }
-
-        /// <summary>
-        /// ステージクリア時
-        /// </summary>
-        private void OnStageClear()
-        {
-            SetGameState(GameState.StageClear);
-            Debug.Log($"Stage Clear! Turns: {turnCount}");
-        }
-
-        /// <summary>
-        /// ステージ失敗時
-        /// </summary>
-        private void OnStageFailure()
-        {
-            SetGameState(GameState.GameOver);
-            Debug.Log("Game Over!");
         }
 
         /// <summary>
@@ -153,30 +200,19 @@ namespace WhatTheStrike.Core
         public void Retry()
         {
             Time.timeScale = 1f;
-            // シーンリロード
             UnityEngine.SceneManagement.SceneManager.LoadScene(
                 UnityEngine.SceneManagement.SceneManager.GetActiveScene().name
             );
         }
 
         /// <summary>
-        /// タイトルへ戻る
+        /// 状態変更
         /// </summary>
-        public void ReturnToTitle()
+        private void SetState(GameState newState)
         {
-            Time.timeScale = 1f;
-            SetGameState(GameState.Title);
-            // タイトルシーンへ
-            // SceneManager.LoadScene("Title");
-        }
-
-        /// <summary>
-        /// ゲーム状態を変更
-        /// </summary>
-        private void SetGameState(GameState newState)
-        {
-            gameState = newState;
-            OnGameStateChanged?.Invoke(newState);
+            if (_state == newState) return;
+            _state = newState;
+            OnStateChanged?.Invoke(newState);
         }
     }
 }
