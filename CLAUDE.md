@@ -134,9 +134,11 @@ Shootableと接触時に効果を発動。
 ## ゲーム設計
 
 詳細は `spec/` ディレクトリを参照:
-- `game-design.md` - ゲームコンセプト
-- `player.md` - プレイヤー仕様
-- `enemy.md` - 敵仕様
-- `stage.md` - ステージ仕様
-- `gimmicks.md` - ギミック仕様
-- `friendship-combo.md` - 友情コンボ仕様
+- `ux/ux_design.md` - ゲームコンセプト・UX設計
+- `gamedesign/chara.md` - プレイヤー仕様
+- `gamedesign/enemy.md` - 敵仕様
+- `gamedesign/stage.md` - ステージ仕様
+- `gamedesign/gimmicks.md` - ギミック仕様
+- `gamedesign/friendship-combo.md` - 友情コンボ仕様
+- `rule/gamerule.md` - ゲームルール
+- `code/` - クラス詳細設計
