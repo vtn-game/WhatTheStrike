@@ -1,0 +1,30 @@
+# ゲーム内のパラメータ
+
+[shootable]
+move_speed = 10.0         # 基本移動速度
+max_power = 15.0          # 最大発射パワー
+stop_threshold = 0.1      # 停止判定の速度閾値
+drag_max_distance = 3.0   # ドラッグ最大距離
+
+[damageable]
+default_hp = 100          # デフォルトHP
+default_defense = 0       # デフォルト防御力
+min_damage = 1            # 最低保証ダメージ
+
+[stage]
+width = 18.0              # ステージ幅(ユニット)
+height = 10.0             # ステージ高さ(ユニット)
+max_turns = 20            # ターン上限
+
+[friendship_combo]
+laser_damage = 50         # レーザーダメージ
+laser_range = 10.0        # レーザー射程
+energy_circle_damage = 30 # エナサーダメージ
+energy_circle_radius = 3.0 # エナサー半径
+speed_up_multiplier = 1.5 # スピードアップ倍率
+explosion_damage = 80     # 爆発ダメージ
+explosion_radius = 2.5    # 爆発半径
+
+[physics]
+wall_bounce_damping = 0.8 # 壁反射時の減衰率
+enemy_bounce_damping = 0.9 # 敵衝突時の減衰率

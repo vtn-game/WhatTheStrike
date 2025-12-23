@@ -1,0 +1,29 @@
+# 配置オブジェクトID定義
+
+[ShootableType]
+0 = "None"              # 何もなし
+1 = "ReflectType"       # 反射タイプ
+2 = "PierceType"        # 貫通タイプ
+
+[DamageableType]
+0 = "None"              # 何もなし
+1 = "SmallEnemy"        # 小型敵
+2 = "MediumEnemy"       # 中型敵
+3 = "LargeEnemy"        # 大型敵
+4 = "Boss"              # ボス
+
+[GimmickType]
+0 = "None"              # 何もなし
+1 = "Block"             # ブロック
+2 = "DestructibleBlock" # 破壊可能ブロック
+3 = "GravityBarrier"    # 重力バリア
+4 = "Mine"              # 地雷
+5 = "Warp"              # ワープ
+6 = "DamageWall"        # ダメージウォール
+
+[FriendshipComboType]
+0 = "None"              # なし
+1 = "Laser"             # レーザー
+2 = "EnergyCircle"      # エナジーサークル
+3 = "SpeedUp"           # スピードアップ
+4 = "Explosion"         # 爆発
