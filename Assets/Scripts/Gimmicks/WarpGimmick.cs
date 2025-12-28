@@ -1,3 +1,5 @@
+#nullable enable
+
 using UnityEngine;
 using WhatTheStrike.Components;
 
@@ -9,8 +11,7 @@ namespace WhatTheStrike.Gimmicks
     /// 自身もShootableコンポーネントを付けることで発射可能
     /// NOTE: Shootableコンポーネントを付けるとターン順に含まれる
     /// </summary>
-    [RequireComponent(typeof(Collider2D))]
-    public class WarpGimmick : MonoBehaviour
+    public class WarpGimmick : Gimmick
     {
         [Header("ワープ設定")]
         [SerializeField] private Transform? exitPoint;
@@ -20,9 +21,7 @@ namespace WhatTheStrike.Gimmicks
         [SerializeField] private bool disableWarpWhileMoving = true;
 
         private Shootable? _shootableComponent;
-        private bool _isActive = true;
 
-        public bool IsActive => _isActive;
         public Transform? ExitPoint => exitPoint;
 
         private void Awake()
@@ -38,21 +37,13 @@ namespace WhatTheStrike.Gimmicks
         {
             get
             {
-                if (!_isActive) return false;
+                if (!isActive) return false;
                 if (disableWarpWhileMoving && _shootableComponent != null)
                 {
                     return _shootableComponent.State != ShootableState.Moving;
                 }
                 return true;
             }
-        }
-
-        /// <summary>
-        /// ワープの有効/無効を切り替え
-        /// </summary>
-        public void SetActive(bool active)
-        {
-            _isActive = active;
         }
 
         /// <summary>
@@ -63,19 +54,16 @@ namespace WhatTheStrike.Gimmicks
             exitPoint = exit;
         }
 
-        private void OnTriggerEnter2D(Collider2D other)
+        /// <summary>
+        /// Shootableがワープに入った時の処理
+        /// </summary>
+        protected override void OnShootableEnter(Shootable shootable)
         {
             if (!IsWarpFunctional) return;
             if (exitPoint == null) return;
 
-            var shootable = other.GetComponent<Shootable>();
-            if (shootable == null) return;
-
             // 自分自身（Shootableとしての自分）がワープに入った場合は無視
             if (_shootableComponent != null && shootable == _shootableComponent) return;
-
-            // Moving状態のShootableのみワープ
-            if (shootable.State != ShootableState.Moving) return;
 
             ExecuteWarp(shootable);
         }
