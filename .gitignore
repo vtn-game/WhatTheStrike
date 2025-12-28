@@ -78,3 +78,7 @@ Assets/CRIMW.meta
 Assets/Foundation/Scripts/BaseSystemEditor/Editor/Melpomene/MelpomeneConfig.asset
 Assets/Feature/Melpomene/Editor/MelpomeneConfig.asset
 
+# Environment files
+.env
+compile.log
+
