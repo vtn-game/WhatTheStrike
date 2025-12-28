@@ -14,6 +14,7 @@ namespace WhatTheStrike.Core
         [Header("設定")]
         [SerializeField] private float maxPullDistance = 3f;
         [SerializeField] private LineRenderer? trajectoryLine;
+        [SerializeField] private PullArrowUI? pullArrowUI;
 
         // 状態
         private List<Shootable> _shootables = new();
@@ -80,6 +81,7 @@ namespace WhatTheStrike.Core
                 {
                     _isDragging = true;
                     _dragStartPos = current.transform.position;
+                    ShowPullArrow(current);
                 }
             }
 
@@ -95,6 +97,7 @@ namespace WhatTheStrike.Core
                 _isDragging = false;
                 ExecuteShot(current);
                 HideTrajectory();
+                HidePullArrow();
             }
         }
 
@@ -142,6 +145,9 @@ namespace WhatTheStrike.Core
             trajectoryLine.positionCount = 2;
             trajectoryLine.SetPosition(0, current.transform.position);
             trajectoryLine.SetPosition(1, (Vector2)current.transform.position + direction * pullDistance * 2);
+
+            // 引っ張りUIも更新
+            UpdatePullArrow(direction, pullDistance);
         }
 
         /// <summary>
@@ -152,6 +158,39 @@ namespace WhatTheStrike.Core
             if (trajectoryLine != null)
             {
                 trajectoryLine.enabled = false;
+            }
+        }
+
+        /// <summary>
+        /// 引っ張りUIを表示
+        /// </summary>
+        private void ShowPullArrow(Shootable shootable)
+        {
+            if (pullArrowUI != null)
+            {
+                pullArrowUI.Show(shootable);
+            }
+        }
+
+        /// <summary>
+        /// 引っ張りUIを更新
+        /// </summary>
+        private void UpdatePullArrow(Vector2 direction, float pullDistance)
+        {
+            if (pullArrowUI != null)
+            {
+                pullArrowUI.UpdateArrow(direction, pullDistance);
+            }
+        }
+
+        /// <summary>
+        /// 引っ張りUIを非表示
+        /// </summary>
+        private void HidePullArrow()
+        {
+            if (pullArrowUI != null)
+            {
+                pullArrowUI.Hide();
             }
         }
 
