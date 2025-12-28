@@ -76,6 +76,7 @@ namespace WhatTheStrike.Components
 
             // Shootableの停止イベントを購読
             shootable.OnStopped += OnShootableStopped;
+            _subscribedShootables.Add(shootable);
         }
 
         private void OnTriggerExit2D(Collider2D other)
@@ -85,6 +86,7 @@ namespace WhatTheStrike.Components
 
             // 購読解除
             shootable.OnStopped -= OnShootableStopped;
+            _subscribedShootables.Remove(shootable);
         }
 
         /// <summary>
